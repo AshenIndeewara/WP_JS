@@ -22,7 +22,7 @@ function initializeWhatsAppClient() {
         puppeteer: {
             headless: true,
             executablePath: process.platform === 'linux'
-                ? '/usr/bin/chromium'
+                ? '/usr/bin/chromium-browser'
                 : undefined,
             args: [
                 '--no-sandbox',
