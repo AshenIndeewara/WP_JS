@@ -1,15 +1,13 @@
-# WhatsApp Number Verification API ⚡
+# WhatsApp API 🚀
 
-A **lightweight, fast** REST API to check if phone numbers are registered on WhatsApp.
+A REST API to check if phone numbers are registered on WhatsApp and send messages/images, powered by **whatsapp-web.js**.
 
 ## ✨ Features
 
-- ⚡ **Instant startup** - Ready in ~5 seconds (vs 2+ minutes with Puppeteer)
-- 🪶 **Lightweight** - Uses Baileys library instead of heavy Chrome browser
-- ✅ Check single or multiple numbers (up to 50)
-- 🔐 QR code authentication with session persistence
+- ✅ Check single or multiple numbers (up to 50 at once)
+- � Send images via URL with optional caption
+- �🔐 QR code authentication with persistent session
 - 🚀 CORS enabled for cross-origin requests
-- 📦 **103 fewer packages** than Puppeteer-based solution
 
 ## Installation
 
@@ -23,53 +21,58 @@ npm install
 
 ```bash
 node main.js
+# or with PM2 (recommended for VPS):
+pm2 start main.js --name "whatsapp-api"
 ```
 
 ### 2. Scan QR Code
 
-When you start the server, a QR code will appear in the terminal. Scan it with WhatsApp on your phone to authenticate.
+A QR code will appear in the terminal (or PM2 logs). Scan it with WhatsApp:
+**Settings → Linked Devices → Link a Device**
 
-**Note:** The QR code appears much faster than the old Puppeteer version!
+Once scanned, the session is saved and persists across restarts.
 
 ### 3. Use the API
 
-Once authenticated, the API will be ready at `http://localhost:3000`
+API is available at `http://localhost:3000`
+
+---
 
 ## API Endpoints
 
-### Health Check
-```http
-GET /health
-```
+### `GET /health`
+Health check — returns server and WhatsApp client status.
 
 **Response:**
 ```json
 {
   "status": "ok",
   "whatsappReady": true,
-  "timestamp": "2026-02-09T15:12:00.000Z"
+  "timestamp": "2026-02-18T15:00:00.000Z"
 }
 ```
 
-### Check Client Status
-```http
-GET /status
-```
+---
+
+### `GET /status`
+Returns whether the WhatsApp client is ready.
 
 **Response:**
 ```json
 {
   "success": true,
   "isReady": true,
-  "timestamp": "2026-02-09T15:12:00.000Z"
+  "timestamp": "2026-02-18T15:00:00.000Z"
 }
 ```
 
-### Check Single Number
-```http
-POST /check-number
-Content-Type: application/json
+---
 
+### `POST /check-number`
+Check if a single phone number is registered on WhatsApp.
+
+**Request:**
+```json
 {
   "number": "919876543210"
 }
@@ -81,16 +84,17 @@ Content-Type: application/json
   "success": true,
   "number": "919876543210",
   "isRegistered": true,
-  "jid": "919876543210@s.whatsapp.net",
-  "timestamp": "2026-02-09T15:12:00.000Z"
+  "timestamp": "2026-02-18T15:00:00.000Z"
 }
 ```
 
-### Check Multiple Numbers
-```http
-POST /check-numbers
-Content-Type: application/json
+---
 
+### `POST /check-numbers`
+Check up to **50 numbers** in a single request.
+
+**Request:**
+```json
 {
   "numbers": ["919876543210", "918765432109", "917654321098"]
 }
@@ -102,208 +106,189 @@ Content-Type: application/json
   "success": true,
   "total": 3,
   "results": [
-    {
-      "number": "919876543210",
-      "isRegistered": true,
-      "jid": "919876543210@s.whatsapp.net"
-    },
-    {
-      "number": "918765432109",
-      "isRegistered": false,
-      "jid": null
-    },
-    {
-      "number": "917654321098",
-      "isRegistered": true,
-      "jid": "917654321098@s.whatsapp.net"
-    }
+    { "number": "919876543210", "isRegistered": true },
+    { "number": "918765432109", "isRegistered": false },
+    { "number": "917654321098", "isRegistered": true }
   ],
-  "timestamp": "2026-02-09T15:12:00.000Z"
+  "timestamp": "2026-02-18T15:00:00.000Z"
 }
 ```
 
+---
+
+### `POST /send-image`
+Send an image (via URL) to a WhatsApp number with an optional caption.
+
+**Request:**
+```json
+{
+  "number": "919876543210",
+  "imageUrl": "https://example.com/image.jpg",
+  "message": "Hello! Here is your image."
+}
+```
+
+> `message` is optional — the image will be sent without a caption if omitted.
+
+**Response:**
+```json
+{
+  "success": true,
+  "number": "919876543210",
+  "imageUrl": "https://example.com/image.jpg",
+  "message": "Hello! Here is your image.",
+  "timestamp": "2026-02-18T15:00:00.000Z"
+}
+```
+
+---
+
 ## Phone Number Format
 
-The API accepts phone numbers in various formats:
-- With country code: `919876543210`
-- With + sign: `+919876543210`
-- With spaces/dashes: `+91 98765 43210` or `+91-9876543210`
+Accepts numbers in any format — all are automatically cleaned:
+- `919876543210`
+- `+919876543210`
+- `+91 98765 43210`
+- `+91-9876543210`
 
-All formats are automatically cleaned and normalized.
+---
 
 ## Example Usage
 
-### Using cURL
+### cURL
 
-**Check single number:**
 ```bash
+# Health check
+curl http://localhost:3000/health
+
+# Check single number
 curl -X POST http://localhost:3000/check-number \
   -H "Content-Type: application/json" \
   -d '{"number": "919876543210"}'
-```
 
-**Check multiple numbers:**
-```bash
+# Check multiple numbers
 curl -X POST http://localhost:3000/check-numbers \
   -H "Content-Type: application/json" \
   -d '{"numbers": ["919876543210", "918765432109"]}'
+
+# Send image
+curl -X POST http://localhost:3000/send-image \
+  -H "Content-Type: application/json" \
+  -d '{"number": "919876543210", "imageUrl": "https://example.com/photo.jpg", "message": "Hi!"}'
 ```
 
-### Using JavaScript (fetch)
+### JavaScript (fetch)
 
 ```javascript
 // Check single number
-const checkNumber = async (phoneNumber) => {
-  const response = await fetch('http://localhost:3000/check-number', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ number: phoneNumber })
-  });
-  
-  const data = await response.json();
-  console.log(data);
-};
+const res = await fetch('http://localhost:3000/check-number', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ number: '919876543210' })
+});
+const data = await res.json();
 
-checkNumber('919876543210');
-
-// Check multiple numbers
-const checkMultiple = async (numbers) => {
-  const response = await fetch('http://localhost:3000/check-numbers', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ numbers })
-  });
-  
-  const data = await response.json();
-  console.log(data);
-};
-
-checkMultiple(['919876543210', '918765432109']);
+// Send image
+const res2 = await fetch('http://localhost:3000/send-image', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    number: '919876543210',
+    imageUrl: 'https://example.com/photo.jpg',
+    message: 'Hello!'
+  })
+});
 ```
 
-### Using Python (requests)
+### Python (requests)
 
 ```python
 import requests
 
 # Check single number
-def check_number(phone_number):
-    response = requests.post(
-        'http://localhost:3000/check-number',
-        json={'number': phone_number}
-    )
-    return response.json()
+r = requests.post('http://localhost:3000/check-number', json={'number': '919876543210'})
+print(r.json())
 
-result = check_number('919876543210')
-print(result)
-
-# Check multiple numbers
-def check_multiple(numbers):
-    response = requests.post(
-        'http://localhost:3000/check-numbers',
-        json={'numbers': numbers}
-    )
-    return response.json()
-
-results = check_multiple(['919876543210', '918765432109'])
-print(results)
+# Send image
+r = requests.post('http://localhost:3000/send-image', json={
+    'number': '919876543210',
+    'imageUrl': 'https://example.com/photo.jpg',
+    'message': 'Hello!'
+})
+print(r.json())
 ```
 
-## Performance Comparison
-
-| Metric | Old (Puppeteer) | New (Baileys) | Improvement |
-|--------|----------------|---------------|-------------|
-| **Startup Time** | ~2+ minutes | ~5 seconds | **24x faster** |
-| **Dependencies** | 256 packages | 153 packages | **103 fewer** |
-| **Memory Usage** | ~500MB+ | ~50MB | **10x lighter** |
-| **QR Code Display** | Slow | Instant | ⚡ |
+---
 
 ## Error Responses
 
-### WhatsApp Not Ready
-```json
-{
-  "success": false,
-  "error": "WhatsApp client is not ready. Please scan QR code first.",
-  "isRegistered": false
-}
+| Scenario | HTTP | Response |
+|---|---|---|
+| WhatsApp not ready | 503 | `{ "success": false, "error": "WhatsApp client is not ready..." }` |
+| Missing number | 400 | `{ "success": false, "error": "Phone number is required" }` |
+| Invalid number | 400 | `{ "success": false, "error": "Invalid phone number format" }` |
+| Number not on WhatsApp | 404 | `{ "success": false, "error": "Number is not registered on WhatsApp" }` |
+| Server error | 500 | `{ "success": false, "error": "Internal server error" }` |
+
+---
+
+## Deployment (Oracle VPS / Ubuntu)
+
+```bash
+# Install dependencies
+sudo apt update && sudo apt install -y chromium-browser
+npm install -g pm2
+
+# Start
+pm2 start main.js --name "whatsapp-api"
+pm2 save && pm2 startup
+
+# View logs / QR code
+pm2 logs whatsapp-api
 ```
 
-### Invalid Number
-```json
-{
-  "success": false,
-  "error": "Invalid phone number format",
-  "isRegistered": false
-}
+Open port 3000 in your firewall:
+```bash
+sudo ufw allow 3000
 ```
 
-### Missing Number
-```json
-{
-  "success": false,
-  "error": "Phone number is required",
-  "isRegistered": false
-}
-```
-
-## Technical Details
-
-### Why Baileys is Faster
-
-**Old Implementation (whatsapp-web.js):**
-- Launches full Chrome browser via Puppeteer
-- Heavy memory and CPU usage
-- Slow initialization
-- 256 npm packages
-
-**New Implementation (Baileys):**
-- Direct WebSocket connection to WhatsApp servers
-- No browser overhead
-- Lightweight and fast
-- Only 153 npm packages
-
-### Session Management
-
-- Sessions are saved in the `auth_info_baileys` folder
-- You only need to scan the QR code once
-- Automatic reconnection on disconnect
-- Session persists across restarts
-
-## Port Configuration
-
-The default port is `3000`. To change it, modify the `PORT` constant in `main.js`:
-
-```javascript
-const PORT = 3000; // Change to your desired port
-```
+---
 
 ## Troubleshooting
 
 **QR code not appearing?**
-- Wait a few seconds for the connection to establish
-- Check that port 3000 is not already in use
+- Run `pm2 logs whatsapp-api` and wait ~10 seconds for initialization
 
 **Authentication failed?**
-- Delete the `auth_info_baileys` folder and restart
-- Make sure you're scanning with the correct WhatsApp account
+- Delete `.wwebjs_auth/` folder and restart to re-scan
 
-**Client not ready?**
-- Wait for the "WhatsApp client is ready!" message
-- Check the `/status` endpoint to verify client status
+**Browser not found error?**
+- Ensure Chromium is installed: `sudo apt install -y chromium-browser`
+- Verify path: `which chromium-browser`
 
-**Connection keeps disconnecting?**
-- Check your internet connection
-- WhatsApp may have rate-limited your connection
-- Wait a few minutes and try again
+**Client not ready (503)?**
+- Wait for "WhatsApp client is ready!" in logs before making requests
 
-## Credits
+---
 
-Built with:
-- [Baileys](https://github.com/WhiskeySockets/Baileys) - Lightweight WhatsApp Web API
+## Session Management
+
+- Session is stored in `.wwebjs_auth/` folder
+- Scan QR code **once** — session persists across restarts
+- If session expires, delete `.wwebjs_auth/` and re-scan
+
+## Port Configuration
+
+Default port is `3000`. Change it in `main.js`:
+```javascript
+const PORT = 3000;
+```
+
+---
+
+## Built With
+
+- [whatsapp-web.js](https://github.com/pedroslopez/whatsapp-web.js) - WhatsApp Web API
 - [Express](https://expressjs.com/) - Web framework
+- [Puppeteer](https://pptr.dev/) - Headless browser automation
 - [qrcode-terminal](https://github.com/gtanner/qrcode-terminal) - QR code display
