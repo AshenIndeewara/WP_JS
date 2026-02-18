@@ -21,6 +21,9 @@ function initializeWhatsAppClient() {
         }),
         puppeteer: {
             headless: true,
+            executablePath: process.platform === 'linux'
+                ? '/usr/bin/chromium'
+                : undefined,
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
